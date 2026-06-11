@@ -4,3 +4,12 @@ GET {{TmsApi_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### Create a New Enrollment
+POST http://localhost:5238/api/enrollments
+Content-Type: application/json
+
+{
+    "studentId": "STU-8821",
+    "courseCode": "CS-301"
+}

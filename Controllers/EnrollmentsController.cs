@@ -19,4 +19,14 @@ public class EnrollmentsController(IEnrollmentService enrollmentService): Contro
         var record = await enrollmentService.GetByIdAsync(id);
         return record is not null ? Ok(record) : NotFound();
     }
+
+    // POST /api/enrollments creates a new enrollment and returns 201 with Location header
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request)
+    {
+        var record = await enrollmentService.EnrollAsync(request.StudentId, request.CourseCode);
+        return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+    }
+
+    public record CreateEnrollmentRequest(string StudentId, string CourseCode);
 }
