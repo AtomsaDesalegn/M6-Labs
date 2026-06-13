@@ -1,4 +1,8 @@
+
+using TmsApi.Services;
 using TmsApi.services;
+using TmsApi.Models;
+using TmsApi.Controllers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication;
@@ -44,6 +48,9 @@ builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
 
 // 💡 Add your new student service registration right here:
 builder.Services.AddSingleton<IStudentService, StudentService>();
+
+// Add your new Course service here
+builder.Services.AddSingleton<ICourseService, CourseService>();
 
 // --- EXERCISE 3: Strongly-Typed Options & Startup Validation ---
 builder.Services.AddOptions<PaymentOptions>()
