@@ -14,8 +14,11 @@ Content-Type: application/json
     "courseCode": "CS-301"
 }
 
+### GET an Existing Enrollment (Should return 204)
+GET {{TmsApi_HostAddress}}/api/enrollments/9b0592c4
+
 ### Delete an Existing Enrollment (Should return 204)
-DELETE {{TmsApi_HostAddress}}/api/enrollments/6ae0cfcd
+DELETE {{TmsApi_HostAddress}}/api/enrollments/05de14ea
 
 ### Delete a Non-Existent Enrollment (Should return 404)
 DELETE {{TmsApi_HostAddress}}/api/enrollments/does-not-exist
