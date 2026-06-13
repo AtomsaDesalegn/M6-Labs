@@ -30,3 +30,17 @@ GET {{TmsApi_HostAddress}}/api/error
 
 ### Test Exercise 6: Empty Status Code Translation (404)
 GET {{TmsApi_HostAddress}}/api/missing-page
+
+### POST Student request 
+
+POST http://localhost:5238/api/students
+Content-Type: application/json
+
+{
+  "name": "Dawit",
+  "age": 23,
+  "gpa": 3.7
+}
+
+### Delete a Student
+DELETE http://localhost:5238/api/students/STU-001

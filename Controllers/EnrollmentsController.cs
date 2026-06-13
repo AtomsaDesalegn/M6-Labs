@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TmsApi.Models;
 [ApiController]
 [Route("api/enrollments")]
 
@@ -36,6 +37,4 @@ public class EnrollmentsController(IEnrollmentService enrollmentService): Contro
         var deleted = await enrollmentService.DeleteAsync(id);
         return deleted ? NoContent() : NotFound();
     }
-
-    public record CreateEnrollmentRequest(string StudentId, string CourseCode);
 }
