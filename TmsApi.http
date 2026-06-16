@@ -46,3 +46,31 @@ Content-Type: application/json
 
 ### Delete a Student
 DELETE http://localhost:5238/api/students/STU-001
+
+
+
+##########Course CRUD##########
+
+### 1. Create a Course (POST)
+POST {{TmsApi_HostAddress}}/api/courses
+X-Training-User: Admin
+Content-Type: application/json
+
+{
+  "id": "CS101",
+  "title": "Introduction to Computer Science",
+  "capacity": 30,
+  "startDate": "2026-09-01"
+}
+
+### 2. Get All Courses (GET)
+GET {{TmsApi_HostAddress}}/api/courses
+X-Training-User: Admin
+
+### 3. Get Course by ID (GET)
+GET {{TmsApi_HostAddress}}/api/courses/CS101
+X-Training-User: Admin
+
+### 4. Delete a Course (DELETE)
+DELETE {{TmsApi_HostAddress}}/api/courses/CS101
+X-Training-User: Admin
