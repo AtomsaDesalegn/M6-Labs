@@ -1,4 +1,3 @@
-
 using TmsApi.Services;
 using TmsApi.services;
 using TmsApi.Models;
@@ -10,7 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging; 
 using Scalar.AspNetCore; 
-using Microsoft.AspNetCore.OpenApi; // 👈 ADD THIS LINE
+using Microsoft.AspNetCore.OpenApi; 
+using Microsoft.EntityFrameworkCore; // ADDED FOR EF CORE
+using TmsApi.Data;                   // ADDED FOR YOUR DATABASE CONTEXT
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,10 @@ builder.Host.UseDefaultServiceProvider(options =>
 // 🧰 SERVICES REGISTRATION (Where builder is active!)
 // =========================================================================
 builder.Services.AddControllers();
+
+//ADDED: Register TmsDbContext scoped for incoming HTTP requests using PostgreSQL
+builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase")));
 
 // EXERCISE 6: Add the ProblemDetails service to the DI container
 builder.Services.AddProblemDetails();

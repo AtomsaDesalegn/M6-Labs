@@ -1,10 +1,11 @@
 namespace TmsApi.Services;
-using TmsApi.Models;
+
+using TmsApi.Entities;
 
 public interface ICourseService
 {
     List<Course> GetAllCourses();
-    Course? GetCourseById(string id); // 🆕 Added
+    Course? GetCourseById(int id); // 
     Course CreateCourse(Course newCourse);
-    bool DeleteCourse(string id); // 🆕 Added
+    bool DeleteCourse(int id); // 
 }

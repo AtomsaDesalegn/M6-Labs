@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Services;
-using TmsApi.Models;
+using TmsApi.Entities; //  Updated to point to your correct entities namespace
 
 namespace TmsApi.Controllers;
 
@@ -23,8 +23,8 @@ public class CourseController : ControllerBase
     }
 
     // 2. GET COURSE BY ID -> GET api/courses/{id}
-    [HttpGet("{id}")] // 🆕 Added
-    public ActionResult<Course> GetById(string id)
+    [HttpGet("{id}")]
+    public ActionResult<Course> GetById(int id) // Changed string to int
     {
         var course = _courseService.GetCourseById(id);
         if (course == null) return NotFound($"Course with ID {id} not found.");
@@ -39,17 +39,16 @@ public class CourseController : ControllerBase
 
         var createdCourse = _courseService.CreateCourse(newCourse);
         
-        // Fixed: Points to GetById now for REST standard compliance
         return CreatedAtAction(nameof(GetById), new { id = createdCourse.Id }, createdCourse);
     }
 
     // 4. DELETE A COURSE -> DELETE api/courses/{id}
-    [HttpDelete("{id}")] // 🆕 Added
-    public ActionResult Delete(string id)
+    [HttpDelete("{id}")]
+    public ActionResult Delete(int id) //Changed string to int
     {
         var deleted = _courseService.DeleteCourse(id);
         if (!deleted) return NotFound($"Course with ID {id} not found.");
         
-        return NoContent(); // 204 Standard response for successful deletes
+        return NoContent(); 
     }
 }
