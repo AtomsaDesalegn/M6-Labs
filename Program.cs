@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging; 
-using Scalar.AspNetCore; 
-using Microsoft.AspNetCore.OpenApi; 
+using Microsoft.Extensions.Logging;
+using Scalar.AspNetCore;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore; // ADDED FOR EF CORE
 using TmsApi.Data;                   // ADDED FOR YOUR DATABASE CONTEXT
 
@@ -52,19 +52,19 @@ builder.Services.AddAuthorization();
 
 // Registering our Exercise 2 Services
 builder.Services.AddSingleton<EnrollmentWorker>();
-builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // 💡 Add your new student service registration right here:
-builder.Services.AddSingleton<IStudentService, StudentService>();
-
+//  Correct: Changes the lifetime to Scoped
+builder.Services.AddScoped<IStudentService, StudentService>();
 // Add your new Course service here
 builder.Services.AddSingleton<ICourseService, CourseService>();
 
 // --- EXERCISE 3: Strongly-Typed Options & Startup Validation ---
 builder.Services.AddOptions<PaymentOptions>()
-    .BindConfiguration("Payments")         
-    .ValidateDataAnnotations()             
-    .ValidateOnStart();                    
+    .BindConfiguration("Payments")
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // =========================================================================
 // 🚀 BUILD THE APPLICATION (This ends the life of 'builder')
@@ -88,7 +88,7 @@ if (app.Environment.IsDevelopment())
 else
 {
     // 🔒 In Production, act strictly: force the exception handler to shield internal stack traces
-    app.UseExceptionHandler(); 
+    app.UseExceptionHandler();
 }
 
 // Turn empty status codes (like bare 404s/401s) into ProblemDetails JSON across all environments
@@ -115,7 +115,7 @@ app.MapGet("/api/error", () =>
     throw new InvalidOperationException("TMS System Failure: Could not connect to the Enrollment Database.");
 });
 
-// 🧪 TEMPORARY TEST ROUTE FOR EXERCISE 4 LOGGING
+// TEMPORARY TEST ROUTE FOR EXERCISE 4 LOGGING
 app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
 {
     var rec = await service.EnrollAsync("S-001", "CS-101");
@@ -132,9 +132,9 @@ app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
-    
+
     // Applies any pending migrations automatically on startup
-    context.Database.Migrate(); 
+    context.Database.Migrate();
 
     // Only seed database if it is empty
     if (!context.Students.Any())
@@ -156,7 +156,7 @@ using (var scope = app.Services.CreateScope())
             new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
         };
         context.Courses.AddRange(courses);
-        
+
         // Save here so the Database generates IDs for students and courses
         context.SaveChanges();
 
@@ -169,6 +169,37 @@ using (var scope = app.Services.CreateScope())
             new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
         };
         context.Enrollments.AddRange(enrollments);
+        context.SaveChanges();
+
+        
+
+        // NEW: Seed Assessments linked to our generated Course IDs
+        // -------------------------------------------------------------
+        var assessments = new List<Assessment>
+    {
+        new() { Title = "Midterm Quiz", MaxScore = 100, Weight = 0.30m, CourseId = courses[0].Id },
+        new() { Title = "Final Exam", MaxScore = 100, Weight = 0.70m, CourseId = courses[0].Id },
+        new() { Title = "Coding Challenge 1", MaxScore = 50, Weight = 0.20m, CourseId = courses[1].Id }
+    };
+        context.Assessments.AddRange(assessments);
+
+        // -------------------------------------------------------------
+        // NEW: Seed Certificates linked to our generated Student and Course IDs
+        // -------------------------------------------------------------
+        var certificates = new List<Certificate>
+    {
+        // Gives Alice Smith a certificate for completing Introduction to Computer Science
+        new()
+        {
+            SerialNumber = "TMS-2026-CERT-0001",
+            IssuedAt = DateTime.UtcNow,
+            StudentId = students[0].Id,
+            CourseId = courses[0].Id
+        }
+    };
+        context.Certificates.AddRange(certificates);
+
+        // Final SaveChanges executes the enrollments, assessments, and certificates together!
         context.SaveChanges();
     }
 }
