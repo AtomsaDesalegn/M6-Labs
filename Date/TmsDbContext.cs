@@ -9,4 +9,34 @@ public class TmsDbContext(DbContextOptions<TmsDbContext> options) : DbContext(op
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<Assessment> Assessments => Set<Assessment>();
     public DbSet<Certificate> Certificates => Set<Certificate>();
+
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Course>(builder =>
+        {
+            // Set Primary Key
+            builder.HasKey(c => c.Id);
+            
+            // Set Max Lengths and Requirements
+            builder.Property(c => c.Code)
+                .IsRequired()
+                .HasMaxLength(10);
+                
+            builder.Property(c => c.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+                
+            // CRITICAL: This index causes PostgreSQL to reject duplicate course codes
+            builder.HasIndex(c => c.Code)
+                .IsUnique();
+
+            // Set up relationship to Enrollments
+            builder.HasMany(c => c.Enrollments)
+                .WithOne(e => e.Course)
+                .HasForeignKey(e => e.CourseId);
+        });
+    }
 }
