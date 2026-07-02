@@ -11,8 +11,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.EntityFrameworkCore; // ADDED FOR EF CORE
-using TmsApi.Data;                   // ADDED FOR YOUR DATABASE CONTEXT
+using Microsoft.EntityFrameworkCore; 
+using TmsApi.Data;                   
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,11 +32,11 @@ builder.Host.UseDefaultServiceProvider(options =>
 // =========================================================================
 builder.Services.AddControllers();
 
-//ADDED: Register TmsDbContext scoped for incoming HTTP requests using PostgreSQL
+// Register TmsDbContext scoped for incoming HTTP requests using PostgreSQL
 builder.Services.AddDbContext<TmsDbContext>(options =>
-options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-.LogTo(Console.WriteLine, LogLevel.Information) // Log SQL to output window
-.EnableSensitiveDataLogging());
+    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+    .LogTo(Console.WriteLine, LogLevel.Information) // Log SQL to output window
+    .EnableSensitiveDataLogging());
 
 // EXERCISE 6: Add the ProblemDetails service to the DI container
 builder.Services.AddProblemDetails();
@@ -54,10 +54,10 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
-// 💡 Add your new student service registration right here:
-//  Correct: Changes the lifetime to Scoped
+// Scoped Student Service
 builder.Services.AddScoped<IStudentService, StudentService>();
-// Add your new Course service here
+
+// Course service registration
 builder.Services.AddSingleton<ICourseService, CourseService>();
 
 // --- EXERCISE 3: Strongly-Typed Options & Startup Validation ---
@@ -78,21 +78,19 @@ var app = builder.Build();
 // Placed on the absolute outside edge to catch the correct final HTTP status codes
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// 🛠️ EXERCISE 7 TODO 1 & TODO 3: Environment Conditional Tuning
+// GLOBAL EXCEPTION HANDLING: Intercepts raw crashes and transforms them into 
+// clean JSON ProblemDetails format across all environments (Crucial for Exercise 3)
+app.UseExceptionHandler();
+
+// Turn empty status codes (like bare 404s/401s) into ProblemDetails JSON
+app.UseStatusCodePages();
+
 if (app.Environment.IsDevelopment())
 {
     // In Development, map the interactive Scalar API documentation explorer
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
-else
-{
-    // 🔒 In Production, act strictly: force the exception handler to shield internal stack traces
-    app.UseExceptionHandler();
-}
-
-// Turn empty status codes (like bare 404s/401s) into ProblemDetails JSON across all environments
-app.UseStatusCodePages();
 
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -126,9 +124,9 @@ app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
     return Results.Ok("Structured logs triggered in console!");
 });
 
-
-
-
+// =========================================================================
+// 🗄️ AUTOMATED DATABASE MIGRATION & SEED DATA ENGINE
+// =========================================================================
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
@@ -147,7 +145,7 @@ using (var scope = app.Services.CreateScope())
             new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
             new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
         };
-        context.Students.AddRange((IEnumerable<TmsApi.Entities.Student>)students);
+        context.Students.AddRange(students);
 
         var courses = new List<Course>
         {
@@ -171,35 +169,29 @@ using (var scope = app.Services.CreateScope())
         context.Enrollments.AddRange(enrollments);
         context.SaveChanges();
 
-        
-
-        // NEW: Seed Assessments linked to our generated Course IDs
-        // -------------------------------------------------------------
+        // Seed Assessments linked to our generated Course IDs
         var assessments = new List<Assessment>
-    {
-        new() { Title = "Midterm Quiz", MaxScore = 100, Weight = 0.30m, CourseId = courses[0].Id },
-        new() { Title = "Final Exam", MaxScore = 100, Weight = 0.70m, CourseId = courses[0].Id },
-        new() { Title = "Coding Challenge 1", MaxScore = 50, Weight = 0.20m, CourseId = courses[1].Id }
-    };
+        {
+            new() { Title = "Midterm Quiz", MaxScore = 100, Weight = 0.30m, CourseId = courses[0].Id },
+            new() { Title = "Final Exam", MaxScore = 100, Weight = 0.70m, CourseId = courses[0].Id },
+            new() { Title = "Coding Challenge 1", MaxScore = 50, Weight = 0.20m, CourseId = courses[1].Id }
+        };
         context.Assessments.AddRange(assessments);
 
-        // -------------------------------------------------------------
-        // NEW: Seed Certificates linked to our generated Student and Course IDs
-        // -------------------------------------------------------------
+        // Seed Certificates linked to our generated Student and Course IDs
         var certificates = new List<Certificate>
-    {
-        // Gives Alice Smith a certificate for completing Introduction to Computer Science
-        new()
         {
-            SerialNumber = "TMS-2026-CERT-0001",
-            IssuedAt = DateTime.UtcNow,
-            StudentId = students[0].Id,
-            CourseId = courses[0].Id
-        }
-    };
+            new()
+            {
+                SerialNumber = "TMS-2026-CERT-0001",
+                IssuedAt = DateTime.UtcNow,
+                StudentId = students[0].Id,
+                CourseId = courses[0].Id
+            }
+        };
         context.Certificates.AddRange(certificates);
 
-        // Final SaveChanges executes the enrollments, assessments, and certificates together!
+        // Final SaveChanges executes everything together
         context.SaveChanges();
     }
 }
