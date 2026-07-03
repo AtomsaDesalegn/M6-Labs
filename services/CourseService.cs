@@ -1,31 +1,49 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using TmsApi.Data;
+using TmsApi.Entities;
+
 namespace TmsApi.Services;
 
-using TmsApi.Entities; 
-
-public class CourseService : ICourseService
+public class CourseService(TmsDbContext context, ILogger<CourseService> logger) : ICourseService
 {
-    // Using a static list if this is a transient service, so data persists between requests
-    private static readonly List<Course> _courses = new();  
-
-    public List<Course> GetAllCourses() => _courses;
-
-    public Course? GetCourseById(int id) // Changed string -> int
+    // TODO 1: Use context.Courses.AsNoTracking() and return FirstOrDefaultAsync
+    public async Task<Course?> GetByIdAsync(int id, CancellationToken ct)
     {
-        return _courses.FirstOrDefault(c => c.Id == id);
+        return await context.Courses
+            .AsNoTracking() // Performance optimization for read-only tracking
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
-    public Course CreateCourse(Course newCourse)
+    // TODO 2: Add course to context.Courses, SaveChangesAsync(ct), log info, and return
+    public async Task<Course> CreateAsync(Course course, CancellationToken ct)
     {
-        _courses.Add(newCourse);
-        return newCourse;
+        context.Courses.Add(course);
+
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation("Successfully created a new course: {Title} ({Code})", course.Title, course.Code);
+
+        return course;
     }
 
-    public bool DeleteCourse(int id) // Changed string -> int
+    // 🆕 Add this implementation:
+    public async Task<IEnumerable<Course>> GetAllAsync(CancellationToken ct)
     {
-        var course = GetCourseById(id);
-        if (course == null) return false;
-        
-        _courses.Remove(course);
-        return true;
+        return await context.Courses
+            .ToListAsync(ct);
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken ct)
+    {
+        var course = await context.Courses.FindAsync([id], ct);
+        if (course == null)
+        {
+            return false; // Course not found
+        }
+
+        context.Courses.Remove(course);
+        await context.SaveChangesAsync(ct);
+        return true; // Successfully deleted
     }
 }

@@ -6,49 +6,50 @@ namespace TmsApi.Controllers;
 
 [ApiController]
 [Route("api/courses")]
-public class CourseController : ControllerBase
+public class CourseController(ICourseService courseService) : ControllerBase
 {
-    private readonly ICourseService _courseService;
-
-    public CourseController(ICourseService courseService)
+    [HttpGet("{id:int}", Name = nameof(GetCourseById))]
+    public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
     {
-        _courseService = courseService;
-    }
+        var course = await courseService.GetByIdAsync(id, ct);
+        if (course is null)
+        {
+            return NotFound();
+        }
 
-    // 1. GET ALL COURSES -> GET api/courses
-    [HttpGet]
-    public ActionResult<List<Course>> GetAll()
-    {
-        return Ok(_courseService.GetAllCourses());
-    }
-
-    // 2. GET COURSE BY ID -> GET api/courses/{id}
-    [HttpGet("{id}")]
-    public ActionResult<Course> GetById(int id) // Changed string to int
-    {
-        var course = _courseService.GetCourseById(id);
-        if (course == null) return NotFound($"Course with ID {id} not found.");
         return Ok(course);
+
+        throw new NotImplementedException();
     }
 
-    // 3. CREATE A NEW COURSE -> POST api/courses
     [HttpPost]
-    public ActionResult<Course> Create([FromBody] Course newCourse)
-    {
-        if (newCourse == null) return BadRequest("Course data cannot be empty.");
 
-        var createdCourse = _courseService.CreateCourse(newCourse);
-        
-        return CreatedAtAction(nameof(GetById), new { id = createdCourse.Id }, createdCourse);
+    public async Task<IActionResult> CreateCourse(Course course, CancellationToken ct)
+    {
+        var result = await courseService.CreateAsync(course, ct);
+
+        return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
+
+        throw new NotImplementedException();
     }
 
-    // 4. DELETE A COURSE -> DELETE api/courses/{id}
-    [HttpDelete("{id}")]
-    public ActionResult Delete(int id) //Changed string to int
+    [HttpGet]
+    public async Task<IActionResult> GetAllCourses(CancellationToken ct)
     {
-        var deleted = _courseService.DeleteCourse(id);
-        if (!deleted) return NotFound($"Course with ID {id} not found.");
-        
-        return NoContent(); 
+        var courses = await courseService.GetAllAsync(ct); // Assumes your service has this method
+        return Ok(courses);
     }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteCourse(int id, CancellationToken ct)
+    {
+        var deleted = await courseService.DeleteAsync(id, ct);
+        if (!deleted)
+        {
+            return NotFound(new { message = $"Course with ID {id} not found." });
+        }
+
+        return NoContent(); // HTTP 204 is the standard success response for a DELETE
+    }
+
 }

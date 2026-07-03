@@ -58,7 +58,7 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 
 // Course service registration
-builder.Services.AddSingleton<ICourseService, CourseService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
 
 // --- EXERCISE 3: Strongly-Typed Options & Startup Validation ---
 builder.Services.AddOptions<PaymentOptions>()

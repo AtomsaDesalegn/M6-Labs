@@ -7,8 +7,9 @@ public class Enrollment
     public int StudentId { get; set; }
     public int CourseId { get; set; }
     public decimal? Grade { get; set; } // Nullable, as student may be currently enrolled
-public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
+    public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
     // Navigation properties back to entities
-    public Student Student { get; set; } = null!;
-    public Course Course { get; set; } = null!;
+    // Navigation properties back to entities
+    public Student? Student { get; set; }
+    public Course? Course { get; set; }
 }

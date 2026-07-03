@@ -4,8 +4,8 @@ using TmsApi.Entities;
 
 public interface ICourseService
 {
-    List<Course> GetAllCourses();
-    Course? GetCourseById(int id); // 
-    Course CreateCourse(Course newCourse);
-    bool DeleteCourse(int id); // 
+Task<Course?> GetByIdAsync(int id, CancellationToken ct);
+Task<Course> CreateAsync(Course course, CancellationToken ct);
+Task<IEnumerable<Course>> GetAllAsync(CancellationToken ct);
+Task<bool> DeleteAsync(int id, CancellationToken ct);
 }
