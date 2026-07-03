@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Services;
-using TmsApi.Entities; //  Updated to point to your correct entities namespace
+using TmsApi.Entities; 
+using Tms.Api.Dtos;
 
 namespace TmsApi.Controllers;
 
@@ -12,25 +13,17 @@ public class CourseController(ICourseService courseService) : ControllerBase
     public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
     {
         var course = await courseService.GetByIdAsync(id, ct);
-        if (course is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(course);
-
-        throw new NotImplementedException();
+        return course is not null ? Ok(course) : NotFound();
     }
 
     [HttpPost]
 
-    public async Task<IActionResult> CreateCourse(Course course, CancellationToken ct)
+    public async Task<IActionResult> CreateCourse(CreateCourseRequest request, CancellationToken ct)
     {
-        var result = await courseService.CreateAsync(course, ct);
+        var result = await courseService.CreateAsync(request, ct);
 
         return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
 
-        throw new NotImplementedException();
     }
 
     [HttpGet]

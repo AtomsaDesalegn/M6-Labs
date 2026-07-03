@@ -57,9 +57,9 @@ X-Training-User: Admin
 Content-Type: application/json
 
 {
-  "code": "CS101",
+  "code": "CSE-102",
   "title": "Introduction to Computer Science",
-  "maxCapacity": 30,
+  "maxCapacity": 25,
   "enrollments": []
 }
 
@@ -68,7 +68,7 @@ GET {{TmsApi_HostAddress}}/api/courses
 X-Training-User: Admin
 
 ### Get a Course by ID
-GET {{TmsApi_HostAddress}}/api/courses/999
+GET {{TmsApi_HostAddress}}/api/courses/13
 X-Training-User: Admin
 
 ### 4. Delete a Course (DELETE)
