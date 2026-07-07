@@ -13,6 +13,8 @@ public interface IEnrollmentService
     Task<EnrollmentRecord?> GetByIdAsync(string id);
     Task<IReadOnlyList<EnrollmentRecord>> GetAllAsync();
     Task<bool> DeleteAsync(string id);
+
+    Task<int> ArchiveOldEnrollmentsAsync(DateTime cutoffDate);
 }
 
 // --- The database-connected implementation ---
@@ -37,18 +39,18 @@ public class EnrollmentService : IEnrollmentService
         // Check for duplicate enrollment inside PostgreSQL
         var existing = await _context.Enrollments
             .FirstOrDefaultAsync(e => e.StudentId == numericStudentId && e.CourseId == numericCourseId);
-            
+
         if (existing is not null)
         {
             _logger.LogWarning(
                 "Duplicate enrollment attempt {StudentId} already in {CourseCode} (record {EnrollmentId})",
                 studentId, courseCode, existing.Id);
-                
+
             return new EnrollmentRecord(existing.Id.ToString(), studentId, courseCode, existing.EnrolledAt);
         }
 
         // Create a new entity item to push down to Postgres
-        var newEntity = new TmsApi.Entities.Enrollment 
+        var newEntity = new TmsApi.Entities.Enrollment
         {
             StudentId = numericStudentId,
             CourseId = numericCourseId,
@@ -58,11 +60,11 @@ public class EnrollmentService : IEnrollmentService
 
         _context.Enrollments.Add(newEntity);
         await _context.SaveChangesAsync(); // Commit row to disk
-        
+
         _logger.LogInformation(
             "Enrolled {StudentId} in {CourseCode} record {EnrollmentId}",
             studentId, courseCode, newEntity.Id);
-            
+
         return new EnrollmentRecord(newEntity.Id.ToString(), studentId, courseCode, newEntity.EnrolledAt);
     }
 
@@ -76,7 +78,7 @@ public class EnrollmentService : IEnrollmentService
             _logger.LogWarning("Enrollment {EnrollmentId} not found", id);
             return null;
         }
-        
+
         return new EnrollmentRecord(record.Id.ToString(), record.StudentId.ToString(), record.CourseId.ToString(), record.EnrolledAt);
     }
 
@@ -106,9 +108,19 @@ public class EnrollmentService : IEnrollmentService
 
         _context.Enrollments.Remove(enrollment);
         await _context.SaveChangesAsync();
-        
+
         _logger.LogInformation("Deleted enrollment {EnrollmentId}", id);
         return true;
+    }
+
+    public async Task<int> ArchiveOldEnrollmentsAsync(DateTime cutoffDate)
+    {
+        // ⚡ Bulk update executes directly on the database in 1 single SQL command
+        int rowsAffected = await _context.Enrollments
+            .Where(e => e.EnrolledAt < cutoffDate && !e.IsArchived)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.IsArchived, true));
+
+        return rowsAffected;
     }
 }
 

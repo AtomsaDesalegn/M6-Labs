@@ -16,6 +16,13 @@ public class StudentController(IStudentService studentService) : ControllerBase
         return Ok(students);
     }
 
+    [HttpGet("deleted")]
+    public async Task<IActionResult> GetDeleted()
+    {
+        var deletedStudents = await studentService.GetDeletedStudentsAsync();
+        return Ok(deletedStudents);
+    }
+
     // GET /api/students/{id} -> returns one student record or 404
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)

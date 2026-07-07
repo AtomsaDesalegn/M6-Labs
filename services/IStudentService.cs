@@ -13,4 +13,5 @@ public interface IStudentService
     Task<bool> DeleteAsync(string id);
 
     Task<bool> UpdateAsync(string id, string name, decimal gpa, uint version);
+    Task<IEnumerable<TmsApi.Entities.Student>> GetDeletedStudentsAsync();
 }

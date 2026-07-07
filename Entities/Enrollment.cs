@@ -12,4 +12,5 @@ public class Enrollment
     // Navigation properties back to entities
     public Student? Student { get; set; }
     public Course? Course { get; set; }
+    public bool IsArchived { get; set; } = false;
 }

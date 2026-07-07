@@ -3,7 +3,7 @@ using TmsApi.Models;
 [ApiController]
 [Route("api/enrollments")]
 
-public class EnrollmentsController(IEnrollmentService enrollmentService): ControllerBase
+public class EnrollmentsController(IEnrollmentService enrollmentService) : ControllerBase
 {
     //Get /api/enrollments returns all enrollments records
     [HttpGet]
@@ -36,5 +36,12 @@ public class EnrollmentsController(IEnrollmentService enrollmentService): Contro
     {
         var deleted = await enrollmentService.DeleteAsync(id);
         return deleted ? NoContent() : NotFound();
+    }
+
+    [HttpPost("bulk-archive")]
+    public async Task<IActionResult> BulkArchive([FromQuery] DateTime cutoffDate)
+    {
+        int updatedRows = await enrollmentService.ArchiveOldEnrollmentsAsync(cutoffDate);
+        return Ok(new { Message = $"{updatedRows} enrollments successfully archived." });
     }
 }
