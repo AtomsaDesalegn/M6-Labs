@@ -124,6 +124,47 @@ app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
     return Results.Ok("Structured logs triggered in console!");
 });
 
+
+//Exercise 7: Intentional N+1 vs Shaped Query
+/* app.MapGet("/api/exercise7", async (TmsDbContext db, CancellationToken cancellationToken) =>
+{
+   Console.WriteLine("=== Starting Exercise 7: Part A (Intentional N+) ===");
+   var students = await db.Students.AsNoTracking().ToListAsync(cancellationToken);
+
+   foreach (var s in students)
+    {
+        var count = await db.Enrollments
+            .AsNoTracking()
+            .CountAsync(e => e.StudentId == s.Id, cancellationToken);
+
+        Console.WriteLine($"{s.Name}: {count} enrollments");
+    } 
+    return Results.Ok("Part A complete. Check your terminal logs for the 1 + N queries!");
+}); */
+
+//Exercise 7: Fixed with shaping(single round-trip)
+
+app.MapGet("/api/exercise7", async(TmsDbContext db, CancellationToken cancellationToken) =>
+{
+    Console.WriteLine("=== Starting exercise 7: Part B(fixed with shaping) ===");
+
+    //Fix: Single query with projection
+    var report = await db.Students
+        .AsNoTracking()
+        .Select(s => new
+        {
+            s.Name,
+            EnrollmentCount = s.Enrollments.Count
+        })
+        .ToListAsync(cancellationToken);
+    foreach(var r in report)
+    {
+        Console.WriteLine($"{r.Name}: {r.EnrollmentCount} enrollments");
+    }
+    return Results.Ok("Part B complete. Check your terminal logs for a single SQL statement!");
+});
+
+
 // =========================================================================
 // 🗄️ AUTOMATED DATABASE MIGRATION & SEED DATA ENGINE
 // =========================================================================

@@ -44,8 +44,13 @@ Content-Type: application/json
   "gpa": 3.7
 }
 
+### GET Student request #####################
+
+GET {{TmsApi_HostAddress}}/api/students
+X-Training-User: Admin
+
 ### Delete a Student
-DELETE http://localhost:5238/api/students/STU-001
+DELETE http://localhost:5238/api/students/11
 
 
 
@@ -72,5 +77,5 @@ GET {{TmsApi_HostAddress}}/api/courses/13
 X-Training-User: Admin
 
 ### 4. Delete a Course (DELETE)
-DELETE {{TmsApi_HostAddress}}/api/courses/10
+DELETE {{TmsApi_HostAddress}}/api/courses/80
 X-Training-User: Admin
