@@ -14,6 +14,9 @@ public class TmsDbContext(DbContextOptions<TmsDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        modelBuilder.Entity<TmsApi.Entities.Student>()
+        .Property<DateTime>("LastUpdated");
 
         modelBuilder.Entity<Course>(builder =>
         {

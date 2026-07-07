@@ -11,4 +11,6 @@ public interface IStudentService
 
     // 💡 ADD THIS NEW LINE TO THE CONTRACT:
     Task<bool> DeleteAsync(string id);
+
+    Task<bool> UpdateAsync(string id, string name, decimal gpa, uint version);
 }

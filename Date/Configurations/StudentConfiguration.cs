@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using TmsApi.Models;
+using TmsApi.Entities; 
 
 namespace TmsApi.Data.Configurations;
+
 
 public class StudentConfiguration : IEntityTypeConfiguration<Student>
 {
@@ -21,5 +22,9 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
 
         builder.Property(s => s.GPA)
         .HasPrecision(3, 2);
+
+        builder.Property<DateTime>("LastUpdated");
+
+        builder.Property(s => s.Version).IsRowVersion();
     }
 }

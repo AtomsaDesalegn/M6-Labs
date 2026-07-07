@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Models; // This contains your API DTO Model (Student)
-using TmsApi.Data;   // This contains your TmsDbContext
-
+using TmsApi.Models; 
+using TmsApi.Data;   
 namespace TmsApi.services;
 
 public class StudentService(TmsDbContext context) : IStudentService
@@ -17,7 +16,8 @@ public class StudentService(TmsDbContext context) : IStudentService
             Id = s.Id.ToString(), // Converts int Id to string format
             Name = s.Name,
             Age = 20,             // Default fallback age required by your model spec
-            GPA = s.GPA
+            GPA = s.GPA,
+            Version = s.Version
         });
     }
 
@@ -35,7 +35,8 @@ public class StudentService(TmsDbContext context) : IStudentService
             Id = dbStudent.Id.ToString(),
             Name = dbStudent.Name,
             Age = 20, 
-            GPA = dbStudent.GPA
+            GPA = dbStudent.GPA,
+            Version = dbStudent.Version
         };
     }
 
@@ -73,6 +74,32 @@ public class StudentService(TmsDbContext context) : IStudentService
 
         context.Students.Remove(student);
         await context.SaveChangesAsync(); 
+        return true;
+    }
+
+
+    public async Task<bool> UpdateAsync(string id, string name, decimal gpa, uint version)
+    {
+        if (!int.TryParse(id, out int numericId)) return false;
+
+        // Fetch the existing record from the database
+        var dbStudent = await context.Students.FirstOrDefaultAsync(s => s.Id == numericId);
+        if (dbStudent == null) return false;
+
+        // Apply the incoming values to the tracked entity
+        dbStudent.Name = name;
+        dbStudent.GPA = gpa;
+
+        // Set the original version token we received from the client.
+        // If this version doesn't match the database's xmin, EF Core throws DbUpdateConcurrencyException
+        context.Entry(dbStudent).Property(s => s.Version).OriginalValue = version;
+
+        // Manually update our hidden shadow property right before saving
+        context.Entry(dbStudent).Property("LastUpdated").CurrentValue = DateTime.UtcNow;
+
+        context.Entry(dbStudent).Property("Version").OriginalValue = version;
+
+        await context.SaveChangesAsync();
         return true;
     }
 }

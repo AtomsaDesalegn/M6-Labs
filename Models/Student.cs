@@ -6,4 +6,5 @@ public class Student
     public required string Name { get; set; }
     public int Age { get; set; }
     public decimal GPA { get; set; }
+    public uint Version { get; set; }
 }

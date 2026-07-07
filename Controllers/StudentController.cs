@@ -29,7 +29,7 @@ public class StudentController(IStudentService studentService) : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateStudentRequest request)
     {
         var record = await studentService.CreateAsync(request.Name, request.Age, request.GPA);
-        
+
         // 🎯 Fixed: Explicit string name mapping to ensure metadata validation passes safely
         return CreatedAtAction("GetById", new { id = record.Id }, record);
     }
@@ -40,6 +40,21 @@ public class StudentController(IStudentService studentService) : ControllerBase
     {
         var deleted = await studentService.DeleteAsync(id);
         return deleted ? NoContent() : NotFound();
+    }
+
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(string id, [FromBody] TmsApi.Models.Student model)
+    {
+        // Call our service method passing the data along with the client's version token
+        var success = await studentService.UpdateAsync(id, model.Name, model.GPA, model.Version);
+
+        if (!success)
+        {
+            return NotFound($"Student with ID {id} not found.");
+        }
+
+        return NoContent(); // 204 Standard response for successful updates
     }
 }
 
