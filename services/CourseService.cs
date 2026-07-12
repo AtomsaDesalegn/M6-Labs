@@ -14,10 +14,11 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger) 
     {
         return await context.Courses
             .AsNoTracking()
+            .Include(c => c.Enrollments) 
             .Where(c => c.Id == id)
             .Select(c => new CourseResponseDto(
                 c.Id, c.Code, c.Title, c.MaxCapacity, c.Enrollments.Count))
-                .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(ct);
     }
 
     // TODO 2: Add course to context.Courses, SaveChangesAsync(ct), log info, and return
@@ -55,4 +56,7 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger) 
         await context.SaveChangesAsync(ct);
         return true; // Successfully deleted
     }
+
+    public Task<bool> CodeExistsAsync(string code, CancellationToken ct) =>
+    context.Courses.AsNoTracking().AnyAsync(c => c.Code == code, ct);
 }

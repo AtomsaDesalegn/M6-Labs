@@ -1,8 +1,12 @@
 using System;
 namespace TmsApi.Entities;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 public class Enrollment
 {
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
     public int StudentId { get; set; }
     public int CourseId { get; set; }

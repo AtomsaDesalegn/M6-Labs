@@ -12,7 +12,8 @@ using Microsoft.Extensions.Logging;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore; 
-using TmsApi.Data;                   
+using TmsApi.Data;
+using Tms.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +24,7 @@ builder.Logging.AddConsole();
 // --- Turn on Strict Container Architecture Validation (From Exercise 2) ---
 builder.Host.UseDefaultServiceProvider(options =>
 {
-    options.ValidateScopes = true;
+    options.ValidateScopes = true;      
     options.ValidateOnBuild = true;
 });
 
@@ -114,7 +115,7 @@ app.MapGet("/api/error", () =>
 });
 
 // TEMPORARY TEST ROUTE FOR EXERCISE 4 LOGGING
-app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
+/* app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
 {
     var rec = await service.EnrollAsync("S-001", "CS-101");
     await service.EnrollAsync("S-001", "CS-101");
@@ -122,7 +123,7 @@ app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
     await service.DeleteAsync(rec.Id);
 
     return Results.Ok("Structured logs triggered in console!");
-});
+}); */
 
 
 //Exercise 7: Intentional N+1 vs Shaped Query

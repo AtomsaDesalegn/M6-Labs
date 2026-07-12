@@ -4,26 +4,48 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Data; // 
+using TmsApi.Data;
+using Tms.Api.Dtos;
+using Tms.Api.Services;
+using TmsApi.Entities; 
 
-// --- The contract ---
-public interface IEnrollmentService
+public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> logger) : IEnrollmentService
 {
-    Task<EnrollmentRecord> EnrollAsync(string studentId, string courseCode);
-    Task<EnrollmentRecord?> GetByIdAsync(string id);
-    Task<IReadOnlyList<EnrollmentRecord>> GetAllAsync();
-    Task<bool> DeleteAsync(string id);
+    public Task<EnrollmentResponseDto?> GetByIdAsync(int courseId, int id, CancellationToken ct) =>
+        context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.Id == id && e.CourseId == courseId)
+            .Select(e => new EnrollmentResponseDto(e.Id, e.CourseId, e.StudentId, e.EnrolledAt))
+            .FirstOrDefaultAsync(ct);
 
-    Task<int> ArchiveOldEnrollmentsAsync(DateTime cutoffDate);
+    public async Task<EnrollmentResponseDto> CreateAsync(int courseId, EnrollStudentRequest request, CancellationToken ct)
+    {
+        var enrollment = new Enrollment
+        {
+            CourseId = courseId,
+            StudentId = request.StudentId,
+            EnrolledAt = DateTime.UtcNow
+        };
+        context.Enrollments.Add(enrollment);
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation("Successfully created enrollment for student {StudentId} in course {CourseId}.", request.StudentId, courseId);
+
+        var result = await GetByIdAsync(courseId, enrollment.Id, ct);
+
+        return result ?? throw new InvalidOperationException("Failed to retrieve the newly created enrollment.");
+    }
 }
 
-// --- The database-connected implementation ---
-public class EnrollmentService : IEnrollmentService
+/* 
+// --- OLD OUTDATED IMPLEMENTATION (COMMENTED OUT TO PREVENT ERRORS) ---
+
+public class OldEnrollmentService
 {
-    private readonly TmsDbContext _context; // 👈 Wired up your real DbContext
+    private readonly TmsDbContext _context;
     private readonly ILogger<EnrollmentService> _logger;
 
-    public EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> logger)
+    public OldEnrollmentService(TmsDbContext context, ILogger<EnrollmentService> logger)
     {
         _context = context;
         _logger = logger;
@@ -36,7 +58,6 @@ public class EnrollmentService : IEnrollmentService
             throw new ArgumentException("Student ID and Course Code must be numeric integers for the database.");
         }
 
-        // Check for duplicate enrollment inside PostgreSQL
         var existing = await _context.Enrollments
             .FirstOrDefaultAsync(e => e.StudentId == numericStudentId && e.CourseId == numericCourseId);
 
@@ -49,17 +70,16 @@ public class EnrollmentService : IEnrollmentService
             return new EnrollmentRecord(existing.Id.ToString(), studentId, courseCode, existing.EnrolledAt);
         }
 
-        // Create a new entity item to push down to Postgres
         var newEntity = new TmsApi.Entities.Enrollment
         {
             StudentId = numericStudentId,
             CourseId = numericCourseId,
-            Grade = 0.0m, // Set default starting grade
+            Grade = 0.0m,
             EnrolledAt = DateTime.UtcNow
         };
 
         _context.Enrollments.Add(newEntity);
-        await _context.SaveChangesAsync(); // Commit row to disk
+        await _context.SaveChangesAsync();
 
         _logger.LogInformation(
             "Enrolled {StudentId} in {CourseCode} record {EnrollmentId}",
@@ -84,7 +104,6 @@ public class EnrollmentService : IEnrollmentService
 
     public async Task<IReadOnlyList<EnrollmentRecord>> GetAllAsync()
     {
-        // Pull directly from the live PostgreSQL table!
         var dbEnrollments = await _context.Enrollments.ToListAsync();
 
         return dbEnrollments.Select(e => new EnrollmentRecord(
@@ -115,7 +134,6 @@ public class EnrollmentService : IEnrollmentService
 
     public async Task<int> ArchiveOldEnrollmentsAsync(DateTime cutoffDate)
     {
-        // ⚡ Bulk update executes directly on the database in 1 single SQL command
         int rowsAffected = await _context.Enrollments
             .Where(e => e.EnrolledAt < cutoffDate && !e.IsArchived)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.IsArchived, true));
@@ -123,8 +141,9 @@ public class EnrollmentService : IEnrollmentService
         return rowsAffected;
     }
 }
+*/
 
-// --- The data shape (Kept exact signature to prevent breaking contracts) ---
+// --- The data shape ---
 public record EnrollmentRecord(
     string Id,
     string StudentId,

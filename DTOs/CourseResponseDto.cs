@@ -5,5 +5,5 @@ public record CourseResponseDto(
     string Code,
     string Title,
     int MaxCapacity,
-    int EnrollmenCount
+    int EnrollmentCount
 );
