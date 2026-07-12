@@ -1,5 +1,4 @@
 using TmsApi.Services;
-using TmsApi.services;
 using TmsApi.Models;
 using TmsApi.Entities;
 using TmsApi.Controllers;
@@ -14,6 +13,7 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore; 
 using TmsApi.Data;
 using Tms.Api.Services;
+using TmsApi.services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,14 +29,14 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 
 // =========================================================================
-// 🧰 SERVICES REGISTRATION (Where builder is active!)
+// 🧰 SERVICES REGISTRATION
 // =========================================================================
 builder.Services.AddControllers();
 
 // Register TmsDbContext scoped for incoming HTTP requests using PostgreSQL
 builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-    .LogTo(Console.WriteLine, LogLevel.Information) // Log SQL to output window
+    .LogTo(Console.WriteLine, LogLevel.Information) 
     .EnableSensitiveDataLogging());
 
 // EXERCISE 6: Add the ProblemDetails service to the DI container
@@ -68,27 +68,20 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateOnStart();
 
 // =========================================================================
-// 🚀 BUILD THE APPLICATION (This ends the life of 'builder')
+// 🚀 BUILD THE APPLICATION
 // =========================================================================
 var app = builder.Build();
 
 // =========================================================================
-// 🛣️ MIDDLEWARE PIPELINE ORDER (From Session 1)
+// 🛣️ MIDDLEWARE PIPELINE ORDER
 // =========================================================================
 
-// Placed on the absolute outside edge to catch the correct final HTTP status codes
 app.UseMiddleware<RequestLoggingMiddleware>();
-
-// GLOBAL EXCEPTION HANDLING: Intercepts raw crashes and transforms them into 
-// clean JSON ProblemDetails format across all environments (Crucial for Exercise 3)
 app.UseExceptionHandler();
-
-// Turn empty status codes (like bare 404s/401s) into ProblemDetails JSON
 app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-    // In Development, map the interactive Scalar API documentation explorer
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
@@ -108,48 +101,17 @@ app.MapGet("/api/assessments/results", () => Results.Ok(new
 
 app.MapControllers();
 
-// EXERCISE 6: Map a test route '/api/error' that intentionally throws
+// EXERCISE 6: Map a test route '/api/error'
 app.MapGet("/api/error", () =>
 {
     throw new InvalidOperationException("TMS System Failure: Could not connect to the Enrollment Database.");
 });
 
-// TEMPORARY TEST ROUTE FOR EXERCISE 4 LOGGING
-/* app.MapGet("/api/logs-test", async (IEnrollmentService service) =>
-{
-    var rec = await service.EnrollAsync("S-001", "CS-101");
-    await service.EnrollAsync("S-001", "CS-101");
-    await service.GetByIdAsync("ghost-id");
-    await service.DeleteAsync(rec.Id);
-
-    return Results.Ok("Structured logs triggered in console!");
-}); */
-
-
-//Exercise 7: Intentional N+1 vs Shaped Query
-/* app.MapGet("/api/exercise7", async (TmsDbContext db, CancellationToken cancellationToken) =>
-{
-   Console.WriteLine("=== Starting Exercise 7: Part A (Intentional N+) ===");
-   var students = await db.Students.AsNoTracking().ToListAsync(cancellationToken);
-
-   foreach (var s in students)
-    {
-        var count = await db.Enrollments
-            .AsNoTracking()
-            .CountAsync(e => e.StudentId == s.Id, cancellationToken);
-
-        Console.WriteLine($"{s.Name}: {count} enrollments");
-    } 
-    return Results.Ok("Part A complete. Check your terminal logs for the 1 + N queries!");
-}); */
-
-//Exercise 7: Fixed with shaping(single round-trip)
-
-app.MapGet("/api/exercise7", async(TmsDbContext db, CancellationToken cancellationToken) =>
+// Exercise 7: Fixed with shaping (single round-trip)
+app.MapGet("/api/exercise7", async (TmsApi.Data.TmsDbContext db, CancellationToken cancellationToken) =>
 {
     Console.WriteLine("=== Starting exercise 7: Part B(fixed with shaping) ===");
 
-    //Fix: Single query with projection
     var report = await db.Students
         .AsNoTracking()
         .Select(s => new
@@ -158,13 +120,13 @@ app.MapGet("/api/exercise7", async(TmsDbContext db, CancellationToken cancellati
             EnrollmentCount = s.Enrollments.Count
         })
         .ToListAsync(cancellationToken);
+
     foreach(var r in report)
     {
         Console.WriteLine($"{r.Name}: {r.EnrollmentCount} enrollments");
     }
     return Results.Ok("Part B complete. Check your terminal logs for a single SQL statement!");
 });
-
 
 // =========================================================================
 // 🗄️ AUTOMATED DATABASE MIGRATION & SEED DATA ENGINE
@@ -173,10 +135,8 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
 
-    // Applies any pending migrations automatically on startup
     context.Database.Migrate();
 
-    // Only seed database if it is empty
     if (!context.Students.Any())
     {
         var students = new List<TmsApi.Entities.Student>
@@ -197,10 +157,8 @@ using (var scope = app.Services.CreateScope())
         };
         context.Courses.AddRange(courses);
 
-        // Save here so the Database generates IDs for students and courses
         context.SaveChanges();
 
-        // Seed relation data using generated IDs
         var enrollments = new List<Enrollment>
         {
             new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
@@ -211,7 +169,6 @@ using (var scope = app.Services.CreateScope())
         context.Enrollments.AddRange(enrollments);
         context.SaveChanges();
 
-        // Seed Assessments linked to our generated Course IDs
         var assessments = new List<Assessment>
         {
             new() { Title = "Midterm Quiz", MaxScore = 100, Weight = 0.30m, CourseId = courses[0].Id },
@@ -220,7 +177,6 @@ using (var scope = app.Services.CreateScope())
         };
         context.Assessments.AddRange(assessments);
 
-        // Seed Certificates linked to our generated Student and Course IDs
         var certificates = new List<Certificate>
         {
             new()
@@ -233,7 +189,6 @@ using (var scope = app.Services.CreateScope())
         };
         context.Certificates.AddRange(certificates);
 
-        // Final SaveChanges executes everything together
         context.SaveChanges();
     }
 }

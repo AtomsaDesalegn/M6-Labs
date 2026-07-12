@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.services;
+using TmsApi.Services;
 using System.Threading.Tasks;
+using TmsApi.services;
 
 namespace TmsApi.Controllers;
 
@@ -36,9 +37,7 @@ public class StudentController(IStudentService studentService) : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateStudentRequest request)
     {
         var record = await studentService.CreateAsync(request.Name, request.Age, request.GPA);
-
-        // 🎯 Fixed: Explicit string name mapping to ensure metadata validation passes safely
-        return CreatedAtAction("GetById", new { id = record.Id }, record);
+        return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
     }
 
     // DELETE /api/students/{id} -> returns 204 or 404
@@ -48,7 +47,6 @@ public class StudentController(IStudentService studentService) : ControllerBase
         var deleted = await studentService.DeleteAsync(id);
         return deleted ? NoContent() : NotFound();
     }
-
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] TmsApi.Models.Student model)
@@ -62,6 +60,14 @@ public class StudentController(IStudentService studentService) : ControllerBase
         }
 
         return NoContent(); // 204 Standard response for successful updates
+    }
+
+    // GET /api/students/paged -> returns stable sorted, paginated rows
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var students = await studentService.GetPagedStudentsAsync(page, pageSize); 
+        return Ok(students);
     }
 }
 
