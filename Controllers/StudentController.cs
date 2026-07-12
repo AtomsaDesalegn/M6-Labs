@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Services;
 using System.Threading.Tasks;
-using TmsApi.services;
+using TmsApi.Services;
 
 namespace TmsApi.Controllers;
 

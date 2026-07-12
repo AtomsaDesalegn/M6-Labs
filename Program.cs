@@ -10,10 +10,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.EntityFrameworkCore; 
+using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using Tms.Api.Services;
-using TmsApi.services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +23,7 @@ builder.Logging.AddConsole();
 // --- Turn on Strict Container Architecture Validation (From Exercise 2) ---
 builder.Host.UseDefaultServiceProvider(options =>
 {
-    options.ValidateScopes = true;      
+    options.ValidateScopes = true;
     options.ValidateOnBuild = true;
 });
 
@@ -36,7 +35,7 @@ builder.Services.AddControllers();
 // Register TmsDbContext scoped for incoming HTTP requests using PostgreSQL
 builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-    .LogTo(Console.WriteLine, LogLevel.Information) 
+    .LogTo(Console.WriteLine, LogLevel.Information)
     .EnableSensitiveDataLogging());
 
 // EXERCISE 6: Add the ProblemDetails service to the DI container
@@ -121,7 +120,7 @@ app.MapGet("/api/exercise7", async (TmsApi.Data.TmsDbContext db, CancellationTok
         })
         .ToListAsync(cancellationToken);
 
-    foreach(var r in report)
+    foreach (var r in report)
     {
         Console.WriteLine($"{r.Name}: {r.EnrollmentCount} enrollments");
     }
@@ -147,7 +146,6 @@ using (var scope = app.Services.CreateScope())
             new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
             new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
         };
-        context.Students.AddRange(students);
 
         var courses = new List<Course>
         {
@@ -155,41 +153,52 @@ using (var scope = app.Services.CreateScope())
             new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
             new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
         };
-        context.Courses.AddRange(courses);
 
-        context.SaveChanges();
-
-        var enrollments = new List<Enrollment>
+        try
         {
-            new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
-            new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
-            new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
-            new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
-        };
-        context.Enrollments.AddRange(enrollments);
-        context.SaveChanges();
+            context.Students.AddRange(students);
+            context.Courses.AddRange(courses);
+            context.SaveChanges();
 
-        var assessments = new List<Assessment>
-        {
-            new() { Title = "Midterm Quiz", MaxScore = 100, Weight = 0.30m, CourseId = courses[0].Id },
-            new() { Title = "Final Exam", MaxScore = 100, Weight = 0.70m, CourseId = courses[0].Id },
-            new() { Title = "Coding Challenge 1", MaxScore = 50, Weight = 0.20m, CourseId = courses[1].Id }
-        };
-        context.Assessments.AddRange(assessments);
-
-        var certificates = new List<Certificate>
-        {
-            new()
+            var enrollments = new List<Enrollment>
             {
-                SerialNumber = "TMS-2026-CERT-0001",
-                IssuedAt = DateTime.UtcNow,
-                StudentId = students[0].Id,
-                CourseId = courses[0].Id
-            }
-        };
-        context.Certificates.AddRange(certificates);
+                new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
+                new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
+                new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
+                new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
+            };
+            context.Enrollments.AddRange(enrollments);
 
-        context.SaveChanges();
+            var assessments = new List<Assessment>
+            {
+                new() { Title = "Midterm Quiz", MaxScore = 100, Weight = 0.30m, CourseId = courses[0].Id },
+                new() { Title = "Final Exam", MaxScore = 100, Weight = 0.70m, CourseId = courses[0].Id },
+                new() { Title = "Coding Challenge 1", MaxScore = 50, Weight = 0.20m, CourseId = courses[1].Id }
+            };
+            context.Assessments.AddRange(assessments);
+
+            var certificates = new List<Certificate>
+            {
+                new()
+                {
+                    SerialNumber = "TMS-2026-CERT-0001",
+                    IssuedAt = DateTime.UtcNow,
+                    StudentId = students[0].Id,
+                    CourseId = courses[0].Id
+                }
+            };
+            context.Certificates.AddRange(certificates);
+
+            context.SaveChanges();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("==================================================");
+            Console.WriteLine("❌ DATABASE SEEDING ERROR DETAILS:");
+            Console.WriteLine(ex.InnerException?.Message ?? ex.Message);
+            Console.WriteLine("==================================================");
+            throw;
+        }
     }
 }
 

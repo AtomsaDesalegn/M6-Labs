@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Models;
 using TmsApi.Data;
-using TmsApi.services;
+using TmsApi.Services;
 
 namespace TmsApi.Services;
 

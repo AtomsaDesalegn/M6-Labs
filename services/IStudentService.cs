@@ -1,4 +1,4 @@
-namespace TmsApi.services;
+namespace TmsApi.Services;
 using TmsApi.Models;
 
 public interface IStudentService
