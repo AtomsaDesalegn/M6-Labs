@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using Tms.Api.Services;
+using Tms.Api.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -201,5 +202,10 @@ using (var scope = app.Services.CreateScope())
         }
     }
 }
-
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    await DataSeeder.SeedAsync(context);
+}
 app.Run();
