@@ -10,4 +10,5 @@ Task<CourseResponseDto> CreateAsync(CreateCourseRequest course, CancellationToke
 Task<IEnumerable<Course>> GetAllAsync(CancellationToken ct);
 Task<bool> DeleteAsync(int id, CancellationToken ct);
 Task<bool> CodeExistsAsync(string code, CancellationToken ct);
+Task<PagedResponse<CourseResponseDto>> GetCoursesAsync(PagedRequest request, CancellationToken ct);
 }

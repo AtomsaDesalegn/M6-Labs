@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Services;
-using TmsApi.Entities; 
 using Tms.Api.Dtos;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace TmsApi.Controllers;
 
@@ -18,29 +15,31 @@ public class CourseController(ICourseService courseService) : ControllerBase
         return course is not null ? Ok(course) : NotFound();
     }
 
-    [HttpPost]
+    // This is the correct endpoint for your pagination tests
+    [HttpGet]
+    public async Task<IActionResult> GetCourses([FromQuery] PagedRequest request, CancellationToken ct)
+    {
+        var result = await courseService.GetCoursesAsync(request, ct);
+        return Ok(result);
+    }
 
+    [HttpPost]
     public async Task<IActionResult> CreateCourse(CreateCourseRequest request, CancellationToken ct)
     {
-        if(await courseService.CodeExistsAsync(request.Code, ct))
+        if (await courseService.CodeExistsAsync(request.Code, ct))
         {
-            return Conflict(new ProblemDetails{
-                Title = "Course code alreay exists",
+            return Conflict(new ProblemDetails
+            {
+                Title = "Course code already exists",
                 Detail = $"A course with code '{request.Code}' is already registered",
                 Status = StatusCodes.Status409Conflict
             });
         }
         var result = await courseService.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetCourseById), new {id = result.Id}, result);
-
+        return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAllCourses(CancellationToken ct)
-    {
-        var courses = await courseService.GetAllAsync(ct); // Assumes your service has this method
-        return Ok(courses);
-    }
+    // REMOVED: GetAllCourses was deleted from here to stop the AmbiguousMatchException
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteCourse(int id, CancellationToken ct)
@@ -51,7 +50,6 @@ public class CourseController(ICourseService courseService) : ControllerBase
             return NotFound(new { message = $"Course with ID {id} not found." });
         }
 
-        return NoContent(); // HTTP 204 is the standard success response for a DELETE
+        return NoContent();
     }
-
 }

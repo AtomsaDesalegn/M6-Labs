@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using Tms.Api.Services;
 using Tms.Api.Persistence;
+using Tms.Api.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +67,11 @@ builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")
     .ValidateDataAnnotations()
     .ValidateOnStart();
+
+builder.Services.AddControllers(options =>
+{
+   options.Filters.Add<AuditLogFilter>(); 
+});
 
 // =========================================================================
 // 🚀 BUILD THE APPLICATION
