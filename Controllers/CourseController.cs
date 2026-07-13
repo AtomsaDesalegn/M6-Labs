@@ -20,10 +20,7 @@ public class CourseController(ICourseService courseService, LinkGenerator linkGe
 
         // 1. Generate URLs dynamically using the primary constructor's linkGenerator
         var selfHref = linkGenerator.GetPathByName(HttpContext, nameof(GetCourseById), new { id });
-        var enrollmentsHref = linkGenerator.GetPathByAction(HttpContext,
-            action: "GetEnrollments",
-            controller: "Enrollments",
-            values: new { courseId = id });
+        var enrollmentsHref = $"{selfHref}/enrollments";
 
         // 2. Build the core HATEOAS Links list using positional record constructor syntax
         var links = new List<LinkDto>
