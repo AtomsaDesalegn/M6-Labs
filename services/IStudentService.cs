@@ -1,17 +1,14 @@
 namespace TmsApi.services;
+
+using TmsApi.DTOs;
 using TmsApi.Models;
 
 public interface IStudentService
 {
-    Task<IEnumerable<Models.Student>> GetAllAsync();
-    Task<Models.Student?> GetByIdAsync(string id);
-
-    // 💡 ADD THIS LINE TO THE CONTRACT:
-    Task<Student> CreateAsync(string name, int age, decimal gpa);
-
-    // 💡 ADD THIS NEW LINE TO THE CONTRACT:
-    Task<bool> DeleteAsync(string id);
-
-    Task<bool> UpdateAsync(string id, string name, decimal gpa, uint version);
-    Task<IEnumerable<TmsApi.Entities.Student>> GetDeletedStudentsAsync();
+    Task<StudentResponseDto?> GetByIdAsync(int id, CancellationToken ct);
+    Task<(IEnumerable<StudentResponseDto> Items, int TotalCount)> GetPagedStudentsAsync(int page, int pageSize, CancellationToken ct);
+    Task<IEnumerable<StudentResponseDto>> GetAllAsync(CancellationToken ct);
+    Task<StudentResponseDto> CreateAsync(CreateStudentRequestDto requestDto, CancellationToken ct);
+    Task<bool> RegistrationNumberExistsAsync(string regNum, CancellationToken ct);
+    Task<bool> DeleteAsync(int id, CancellationToken ct);
 }

@@ -1,69 +1,104 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using TmsApi.DTOs;
 using TmsApi.services;
-using System.Threading.Tasks;
 
 namespace TmsApi.Controllers;
 
 [ApiController]
-[Route("api/students")]
-public class StudentController(IStudentService studentService) : ControllerBase
+[Route("api/[controller]")]
+public class StudentController : ControllerBase
 {
-    // GET /api/students -> returns all enrollment records
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
+    private readonly IStudentService _studentService;
+    
+    public StudentController(IStudentService studentService)
     {
-        var students = await studentService.GetAllAsync();
-        return Ok(students);
+        _studentService = studentService;
     }
 
-    [HttpGet("deleted")]
-    public async Task<IActionResult> GetDeleted()
+    /// <summary>
+    /// Get a student by ID
+    /// </summary>
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [EndpointSummary("Get a student by ID")]
+    [EndpointDescription("Returns a single student detail using their unique identifier.")]
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
-        var deletedStudents = await studentService.GetDeletedStudentsAsync();
-        return Ok(deletedStudents);
-    }
-
-    // GET /api/students/{id} -> returns one student record or 404
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(string id)
-    {
-        var record = await studentService.GetByIdAsync(id);
-        return record is not null ? Ok(record) : NotFound();
-    }
-
-    // POST /api/students -> creates and returns 201 with Location header
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateStudentRequest request)
-    {
-        var record = await studentService.CreateAsync(request.Name, request.Age, request.GPA);
-
-        // 🎯 Fixed: Explicit string name mapping to ensure metadata validation passes safely
-        return CreatedAtAction("GetById", new { id = record.Id }, record);
-    }
-
-    // DELETE /api/students/{id} -> returns 204 or 404
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id)
-    {
-        var deleted = await studentService.DeleteAsync(id);
-        return deleted ? NoContent() : NotFound();
-    }
-
-
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] TmsApi.Models.Student model)
-    {
-        // Call our service method passing the data along with the client's version token
-        var success = await studentService.UpdateAsync(id, model.Name, model.GPA, model.Version);
-
-        if (!success)
+        var student = await _studentService.GetByIdAsync(id, ct);
+        if(student == null)
         {
-            return NotFound($"Student with ID {id} not found.");
+            return NotFound();
         }
+        return Ok(student);
+    }
 
-        return NoContent(); // 204 Standard response for successful updates
+    /// <summary>
+    /// List students with pagination
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [EndpointSummary("List students with pagination")]
+    [EndpointDescription("Returns a paginated list of TMS students. PageSize is capped at 50.")]
+    public async Task<IActionResult> GetAllStudents([FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 50) pageSize = 50;
+        
+        var (items, totalCount) = await _studentService.GetPagedStudentsAsync(page, pageSize, ct);
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return Ok(new
+        {
+            page,
+            pageSize,
+            totalCount,
+            totalPages,
+            items
+        });
+    }
+
+    /// <summary>
+    /// Create a new student
+    /// </summary>
+    [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [EndpointSummary("Create a new student")]
+    [EndpointDescription("Creates a new student record. The registration number must be unique.")]
+    public async Task<IActionResult> Create(CreateStudentRequestDto request, CancellationToken ct)
+    {
+        if(await _studentService.RegistrationNumberExistsAsync(request.RegistrationNumber, ct))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Registration number already exists",
+                Detail = $"A student with registration number '{request.RegistrationNumber}' is already registered.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+        var newStudent = await _studentService.CreateAsync(request, ct);
+
+        return CreatedAtAction(nameof(GetById), new {id = newStudent.Id}, newStudent);
+    }
+
+    /// <summary>
+    /// Delete a student
+    /// </summary>
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [EndpointSummary("Delete a student")]
+    [EndpointDescription("Permanently removes a student record from the system.")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var deleted = await _studentService.DeleteAsync(id, ct);
+        if (!deleted)
+        {
+            return NotFound();
+        }
+        return NoContent();
     }
 }
-
-// Data Transfer Object for Request Body
-public record CreateStudentRequest(string Name, int Age, decimal GPA);
