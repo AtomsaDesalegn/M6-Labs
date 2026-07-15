@@ -1,132 +1,84 @@
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Models;
+using Microsoft.Extensions.Logging;
 using TmsApi.Data;
+using TmsApi.DTOs;
+using TmsApi.Entities;
 using TmsApi.Services;
 
-namespace TmsApi.Services;
+namespace TmsApi.services;
 
-public class StudentService(TmsDbContext context) : IStudentService
+public class StudentService(TmsDbContext context, ILogger<StudentService> logger) : IStudentService
 {
-    // 1. Get All Students from PostgreSQL and map to API Models
-    public async Task<IEnumerable<TmsApi.Models.Student>> GetAllAsync()
+    public async Task<StudentResponseDto?> GetByIdAsync(int id, CancellationToken ct)
     {
-        var dbStudents = await context.Students.ToListAsync();
-
-        // Map list of Entities.Student to IEnumerable<Models.Student>
-        return dbStudents.Select(s => new TmsApi.Models.Student
-        {
-            Id = s.Id.ToString(), // Converts int Id to string format
-            Name = s.Name,
-            Age = 20,             // Default fallback age required by your model spec
-            GPA = s.GPA,
-            Version = s.Version
-        });
-    }
-
-    // 2. Get Student By ID and map to API Model
-    public async Task<TmsApi.Models.Student?> GetByIdAsync(string id)
-    {
-        if (!int.TryParse(id, out int numericId)) return null;
-
-        var dbStudent = await context.Students.FirstOrDefaultAsync(s => s.Id == numericId);
-        if (dbStudent == null) return null;
-
-        // Map single Entities.Student to Models.Student
-        return new TmsApi.Models.Student
-        {
-            Id = dbStudent.Id.ToString(),
-            Name = dbStudent.Name,
-            Age = 20,
-            GPA = dbStudent.GPA,
-            Version = dbStudent.Version
-        };
-    }
-
-    // 3. Create a New Student in PostgreSQL and return as API Model
-    public async Task<TmsApi.Models.Student> CreateAsync(string name, int age, decimal gpa)
-    {
-        // Notice we are explicitly instantiating the database entity type here to save it
-        var newDbStudent = new TmsApi.Entities.Student
-        {
-            Name = name,
-            GPA = gpa,
-            RegistrationNumber = $"TMS-2026-{Guid.NewGuid().ToString()[..4].ToUpper()}"
-        };
-
-        context.Students.Add(newDbStudent);
-        await context.SaveChangesAsync();
-
-        // Map and return it back as the required API model type
-        return new TmsApi.Models.Student
-        {
-            Id = newDbStudent.Id.ToString(),
-            Name = newDbStudent.Name,
-            Age = age,
-            GPA = newDbStudent.GPA
-        };
-    }
-
-    // 4. Delete a Student from PostgreSQL
-    public async Task<bool> DeleteAsync(string id)
-    {
-        if (!int.TryParse(id, out int numericId)) return false;
-
-        var student = await context.Students.FindAsync(numericId);
-        if (student == null) return false;
-
-        context.Students.Remove(student);
-        await context.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<bool> UpdateAsync(string id, string name, decimal gpa, uint version)
-    {
-        if (!int.TryParse(id, out int numericId)) return false;
-
-        // Fetch the existing record from the database
-        var dbStudent = await context.Students.FirstOrDefaultAsync(s => s.Id == numericId);
-        if (dbStudent == null) return false;
-
-        // Apply the incoming values to the tracked entity
-        dbStudent.Name = name;
-        dbStudent.GPA = gpa;
-
-        // Set the original version token we received from the client.
-        // If this version doesn't match the database's xmin, EF Core throws DbUpdateConcurrencyException
-        context.Entry(dbStudent).Property(s => s.Version).OriginalValue = version;
-
-        // Manually update our hidden shadow property right before saving
-        context.Entry(dbStudent).Property("LastUpdated").CurrentValue = DateTime.UtcNow;
-
-        await context.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<IEnumerable<TmsApi.Entities.Student>> GetDeletedStudentsAsync()
-    {
-        // 👑 Bypasses the global query filter to return ONLY soft-deleted records
         return await context.Students
-            .IgnoreQueryFilters()
-            .Where(s => s.IsDeleted)
-            .ToListAsync();
+            .AsNoTracking()
+            .Where(s => s.Id == id)
+            .Select(s => new StudentResponseDto(s.Id, s.RegistrationNumber, s.Name, s.GPA, s.Age, s.IsActive))
+            .FirstOrDefaultAsync(ct);
+    }
+    
+    public async Task<StudentResponseDto> CreateAsync(CreateStudentRequestDto requestDto, CancellationToken ct)
+    {
+        var student = new Student
+        {
+            RegistrationNumber = requestDto.RegistrationNumber,
+            Name = requestDto.Name,
+            GPA = requestDto.GPA,
+            Age = requestDto.Age,
+            IsActive = true
+        };
+
+        context.Students.Add(student);
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation("Created student {StudentId} ({RegistrationNumber})", student.Id, student.RegistrationNumber);
+
+        return (await GetByIdAsync(student.Id, ct))!;
     }
 
-    public async Task<IEnumerable<TmsApi.Models.Student>> GetPagedStudentsAsync(int pageNumber, int pageSize = 20)
+    public async Task<(IEnumerable<StudentResponseDto> Items, int TotalCount)> GetPagedStudentsAsync(int page, int pageSize, CancellationToken ct)
     {
-        if (pageNumber < 1) pageNumber = 1;
-
-        return await context.Students
-            .OrderBy(s => s.Name)
-            .ThenBy(s => s.Id)
-            .Skip((pageNumber - 1) * pageSize)
+        var totalCount = await context.Students.CountAsync(ct);
+        var items = await context.Students
+            .AsNoTracking()
+            .OrderBy(s => s.Id)
+            .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(s => new TmsApi.Models.Student
-            {
-                Id = s.Id.ToString(),
-                Name = s.Name,
-                Age = 20, // Default fallback age matching your other endpoints
-                GPA = s.GPA
-            })
-            .ToListAsync(); // Placed perfectly at the end
+            .Select(s => new StudentResponseDto(s.Id, s.RegistrationNumber, s.Name, s.GPA, s.Age, s.IsActive))
+            .ToListAsync(ct);
+        
+        return (items, totalCount);
     }
+
+    public async Task<IEnumerable<StudentResponseDto>> GetAllAsync(CancellationToken ct)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .Select(s => new StudentResponseDto(
+                s.Id,
+                s.RegistrationNumber,
+                s.Name,
+                s.GPA,
+                s.Age,
+                s.IsActive))
+            .ToListAsync(ct);
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken ct)
+    {
+        var student = await context.Students.FindAsync([id], ct);
+        if(student == null)
+        {
+            return false;
+        }
+        context.Students.Remove(student);
+        await context.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> RegistrationNumberExistsAsync(string regNum, CancellationToken ct) => 
+        await context.Students
+            .AsNoTracking()
+            .AnyAsync(s => s.RegistrationNumber == regNum, ct);
 }

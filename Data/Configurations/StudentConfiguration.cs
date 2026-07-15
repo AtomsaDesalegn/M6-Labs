@@ -26,5 +26,7 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         builder.Property<DateTime>("LastUpdated");
 
         builder.Property(s => s.Version).IsRowVersion();
+        
+        builder.HasQueryFilter(s => !s.IsDeleted);
     }
 }

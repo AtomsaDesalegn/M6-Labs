@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +21,18 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
 
     public async Task<EnrollmentResponseDto> CreateAsync(int courseId, EnrollStudentRequest request, CancellationToken ct)
     {
+        // 1. Manually check the database for the current highest ID and increment it by 1
+        var nextId = context.Enrollments.Any() ? context.Enrollments.Max(e => e.Id) + 1 : 1;
+
+        // 2. Build the new enrollment with the manual ID explicitly assigned
         var enrollment = new Enrollment
         {
+            Id = nextId,
             CourseId = courseId,
             StudentId = request.StudentId,
             EnrolledAt = DateTime.UtcNow
         };
+        
         context.Enrollments.Add(enrollment);
         await context.SaveChangesAsync(ct);
 
@@ -35,6 +42,13 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
 
         return result ?? throw new InvalidOperationException("Failed to retrieve the newly created enrollment.");
     }
+
+    public async Task<IEnumerable<EnrollmentResponseDto>> GetByCourseIdAsync(int courseId, CancellationToken ct) =>
+        await context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.CourseId == courseId)
+            .Select(e => new EnrollmentResponseDto(e.Id, e.CourseId, e.StudentId, e.EnrolledAt))
+            .ToListAsync(ct);
 }
 
 /* 
